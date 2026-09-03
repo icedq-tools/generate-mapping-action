@@ -4,8 +4,8 @@ set -euo pipefail
 ARGS=(
   "generate-mapping"
   "--bundle" "${BUNDLE}"
-  "--output-file" "${OUTPUT_FILE}"
-  "--output" "json"
+  "--output" "${OUTPUT_FILE}"
+  "--output-format" "json"
 )
 
 # Ensure parent directory for the output file exists.
