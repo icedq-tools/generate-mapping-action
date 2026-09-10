@@ -163,21 +163,16 @@ The resulting mapping JSON (`useFqn: true`) is written to `output-file` and pass
 
 ### Field semantics
 
-| Field | Supported actions | What it does |
-|---|---|---|
-| `useFqn` | `true` / `false` | `true` when an asset (rule/workflow/folder) with the same name already exists in the target — this action always produces `true`. `false` when no same-named asset exists in target yet; only relevant if you're hand-authoring. |
-| `connections` | `override` only | Re-links the imported rule/workflow to use `newId` (target's connection) instead of `existingId` (source's connection). The target connection must already exist by name and connector type — if this action can't find a match, it throws error rather than writing a partial mapping file (see [How it works](#how-it-works)). |
-| `parameters` | `append`, `override`, `upsert` | `append` adds new keys to the target parameter without touching existing ones. `override` replaces the values of keys with matching names. `upsert` replaces matching keys and adds any new ones — this action always writes `upsert`. |
-| `customFields` | `override` only | Overrides the field's value in the target. The target field must already exist by name — unmatched fields are silently skipped by this action rather than failing the whole run. |
+| Field | Is Required | Supported actions | What it does |
+|---|---|---|---|
+| `useFqn` | No | `true` / `false` | `true` when an asset (rule/workflow/folder) with the same name already exists in the target — this action always produces `true`. `false` when no same-named asset exists in target yet; only relevant if you're hand-authoring. |
+| `connections` | No — omit this key (or the whole `mapping` object) when there's nothing to map | `override` only | Re-links the imported rule/workflow to use `newId` (target's connection) instead of `existingId` (source's connection). The target connection must already exist by name and connector type — if this action can't find a match, it throws error rather than writing a partial mapping file (see [How it works](#how-it-works)). |
+| `parameters` | No — same as `connections` | `append`, `override`, `upsert` | `append` adds new keys to the target parameter without touching existing ones. `override` replaces the values of keys with matching names. `upsert` replaces matching keys and adds any new ones — this action always writes `upsert`. |
+| `customFields` | No — same as `connections` | `override` only | Overrides the field's value in the target. The target field must already exist by name — unmatched fields are silently skipped by this action rather than failing the whole run. |
 
 ### Examples
 
-**Nothing to map** — e.g. a Groovy script rule with no connections, parameters, or custom fields to re-link. The `mapping` object is omitted entirely; only `useFqn` is required.
-```json
-{ "useFqn": true }
-```
-
-**Connection only**
+**1. Connection only, no Parameters or Custom Fields**
 ```json
 {
   "useFqn": true,
@@ -193,28 +188,84 @@ The resulting mapping JSON (`useFqn: true`) is written to `output-file` and pass
 }
 ```
 
-**Parameters only** — every entry needs both `existingId` (source) and `newId` (target); this action always writes `upsert`.
-```json
-{
-  "useFqn": true,
-  "mapping": {
-    "parameters": [
-      {
-        "existingId": "parm-da473fee-a37e-5e9c-ad27-12436271abca",
-        "newId":      "parm-e2d8f6c4-4a3b-5f9c-8d5e-7a9b2c3d4e5f",
-        "action":     "upsert"
-      },
-      {
-        "existingId": "parm-f473tre-a35e-5y7c-af57-12766273fdlp",
-        "newId":      "parm-a8c4e2b6-7d1f-4e9a-b3c5-2f6d8e0a1b3c",
-        "action":     "upsert"
-      }
-    ]
-  }
-}
-```
+**2. Parameters — choosing `append` vs `override` vs `upsert`**
 
-**Full mapping** — connections, parameters, and custom fields together. Custom fields are matched and written by *name*, not UUID.
+Every entry needs both `existingId` (source) and `newId` (target). This action itself always writes `upsert` — the other two only matter if you're hand-authoring or hand-editing the mapping file.
+
+Say the source parameter `parameters_set_1` (exported with the rule) has:
+
+| Key | Value |
+|---|---|
+| `dbkey` | `PROD` |
+| `datekey` | `2/4/2025` |
+| `typekey` | `Individual, Corporate` |
+| `newkey` | `100` |
+
+...and the target workspace's matching parameter already exists with different values, plus one key the source doesn't have at all:
+
+| Key | Value |
+|---|---|
+| `dbkey` | `QA` |
+| `datekey` | `1/1/2025` |
+| `typekey` | `Individual` |
+| `regionkey` | `US-EAST` |
+
+- **`append`** — you're only introducing a *new* key this rule needs, and want a guarantee that nothing already in the target parameter can be touched — even if a name accidentally matches. Safest choice when the target's existing keys must never be overwritten. Could be in case of deploying a new rule or even an existing one where you added more keys in the same rule.
+  ```json
+  {
+    "existingId": "parm-da473fee-a37e-5e9c-ad27-12436271abca",
+    "newId":      "parm-e2d8f6c4-4a3b-5f9c-8d5e-7a9b2c3d4e5f",
+    "action":     "append"
+  }
+  ```
+  Resulting target parameter:
+
+  | Key | Value | Outcome |
+  |---|---|---|
+  | `dbkey` | `QA` | unchanged — `append` never touches an existing key |
+  | `datekey` | `1/1/2025` | unchanged |
+  | `typekey` | `Individual` | unchanged |
+  | `regionkey` | `US-EAST` | unchanged — source doesn't reference this key |
+  | `newkey` | `100` | **added** — didn't exist in target yet |
+
+- **`override`** — the target parameter already has a key with the same name (e.g. changing a `start_date` value), and you want to replace just that value. Unlike `upsert`, `override` never creates a new key — so it won't silently introduce something unexpected if the name doesn't actually match anything in target. Suitable when deploying an existing rule with an updated parameter value, where you specifically expect the target key to already be there.
+  ```json
+  {
+    "existingId": "parm-da473fee-a37e-5e9c-ad27-12436271abca",
+    "newId":      "parm-e2d8f6c4-4a3b-5f9c-8d5e-7a9b2c3d4e5f",
+    "action":     "override"
+  }
+  ```
+  Resulting target parameter:
+
+  | Key | Value | Outcome |
+  |---|---|---|
+  | `dbkey` | `PROD` | **replaced** — matched key, value overwritten from source |
+  | `datekey` | `2/4/2025` | **replaced** |
+  | `typekey` | `Individual, Corporate` | **replaced** |
+  | `regionkey` | `US-EAST` | unchanged — source doesn't reference this key |
+  | *(`newkey` not added)* | — | `override` never creates a new key, even though source has one |
+
+- **`upsert`** — you want the target to end up matching source for these keys regardless of current state: matching keys get replaced, missing keys get added. The safe "just make it match" default — why this action always chooses it automatically.
+  ```json
+  {
+    "existingId": "parm-da473fee-a37e-5e9c-ad27-12436271abca",
+    "newId":      "parm-e2d8f6c4-4a3b-5f9c-8d5e-7a9b2c3d4e5f",
+    "action":     "upsert"
+  }
+  ```
+  Resulting target parameter:
+
+  | Key | Value | Outcome |
+  |---|---|---|
+  | `dbkey` | `PROD` | **replaced** |
+  | `datekey` | `2/4/2025` | **replaced** |
+  | `typekey` | `Individual, Corporate` | **replaced** |
+  | `regionkey` | `US-EAST` | unchanged — source doesn't reference this key |
+  | `newkey` | `100` | **added** — didn't exist in target yet |
+
+**3. Full mapping** — connections, parameters, and custom fields together. Custom fields are matched and written by *name*, not UUID.
+
 ```json
 {
   "useFqn": true,
@@ -243,8 +294,6 @@ The resulting mapping JSON (`useFqn: true`) is written to `output-file` and pass
   }
 }
 ```
-
-> `append`/`override` for parameters and `useFqn: false` only come into play if you're hand-authoring or hand-editing a mapping file — this action itself always produces the `useFqn: true`, `upsert`-for-parameters shape shown in the examples above.
 
 ### Tip: keep mapping files under version control
 
