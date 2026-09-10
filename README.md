@@ -13,13 +13,13 @@ Pairs with [`icedq-tools/export-action`](https://github.com/marketplace/actions/
 
 - uses: icedq-tools/generate-mapping-action@v1
   with:
-    icedq-url:     ${{ secrets.ICEDQ_URL }}
-    keycloak-url:  ${{ secrets.ICEDQ_KEYCLOAK_URL }}
+    icedq-url:     ${{ vars.ICEDQ_URL }}
+    keycloak-url:  ${{ vars.ICEDQ_KEYCLOAK_URL }}
     client-id:     ${{ secrets.ICEDQ_CLIENT_ID }}
     client-secret: ${{ secrets.ICEDQ_CLIENT_SECRET }}
-    org-id:        ${{ secrets.ICEDQ_ORG_ID }}
-    account-id:    ${{ secrets.ICEDQ_ACCOUNT_ID }}
-    workspace-id:  ${{ vars.QA_WORKSPACE_ID }}
+    org-id:        ${{ vars.ICEDQ_ORG_ID }}
+    account-id:    ${{ vars.ICEDQ_ACCOUNT_ID }}
+    workspace-id:  ${{ vars.ICEDQ_WORKSPACE_ID }}
     bundle:        ./bundle.zip
     output-file:   ./icedq-mapping.json
 ```
@@ -55,7 +55,6 @@ jobs:
           id:            ${{ vars.RULE_ID }}
           output-file:   ./exports/bundle.zip
           artifact-name: icedq-bundle
-          verify-ssl:    ${{ vars.ICEDQ_VERIFY_SSL }}
 
   generate-mapping:
     runs-on: ubuntu-latest
@@ -86,7 +85,6 @@ jobs:
           bundle:        ./exports/bundle.zip
           output-file:   ./mappings/icedq-mapping.json
           artifact-name: icedq-mapping
-          verify-ssl:    ${{ vars.ICEDQ_VERIFY_SSL }}
 
   import:
     runs-on: ubuntu-latest
@@ -122,7 +120,6 @@ jobs:
           mapping-file:          ./mappings/icedq-mapping.json
           strict:                false
           terminate-on-conflict: true
-          verify-ssl:            ${{ vars.ICEDQ_VERIFY_SSL }}
 ```
 
 ## Inputs
