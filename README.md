@@ -4,8 +4,6 @@ GitHub composite Action that auto-generates a mapping file from an iceDQ export 
 
 Pairs with [`icedq-tools/export-action`](https://github.com/marketplace/actions/icedq-export) and [`icedq-tools/import-action`](https://github.com/marketplace/actions/icedq-import) for zero-touch promotion pipelines.
 
-> **Required role:** the service account behind `client-id`/`client-secret` needs at least **Contributor** on the target workspace — this action queries connections, parameters, and custom fields there. (`export-action` only needs **Reader** on its source workspace; `import-action` needs **Contributor** on its target.)
-
 ## Usage
 
 ### Generate a mapping file from an export bundle
@@ -171,8 +169,8 @@ The resulting mapping JSON (`useFqn: true`) is written to `output-file` and pass
 | Field | Supported actions | What it does |
 |---|---|---|
 | `useFqn` | `true` / `false` | `true` when an asset (rule/workflow/folder) with the same name already exists in the target — this action always produces `true`. `false` when no same-named asset exists in target yet; only relevant if you're hand-authoring. |
-| `connections` | `override` only | Re-links the imported rule/workflow to use `newId` (target's connection) instead of `existingId` (source's connection). The target connection must already exist by name and connector type — if this action can't find a match, it throws rather than writing a partial mapping file (see [How it works](#how-it-works)). |
-| `parameters` | `append`, `override`, `upsert` | `append` adds new keys to the target parameter without touching existing ones. `override` replaces the values of keys with matching names. `upsert` replaces matching keys and adds any new ones — this action always writes `upsert`. `append`/`override` require the target parameter to already exist; when this action can't find a name match, it still writes an `upsert` entry with no `newId`, so import creates the parameter fresh instead of failing. |
+| `connections` | `override` only | Re-links the imported rule/workflow to use `newId` (target's connection) instead of `existingId` (source's connection). The target connection must already exist by name and connector type — if this action can't find a match, it throws error rather than writing a partial mapping file (see [How it works](#how-it-works)). |
+| `parameters` | `append`, `override`, `upsert` | `append` adds new keys to the target parameter without touching existing ones. `override` replaces the values of keys with matching names. `upsert` replaces matching keys and adds any new ones — this action always writes `upsert`. |
 | `customFields` | `override` only | Overrides the field's value in the target. The target field must already exist by name — unmatched fields are silently skipped by this action rather than failing the whole run. |
 
 ### Examples
@@ -188,7 +186,11 @@ The resulting mapping JSON (`useFqn: true`) is written to `output-file` and pass
   "useFqn": true,
   "mapping": {
     "connections": [
-      { "existingId": "conn-3e7788a3-69aa-546e-aee0-5e96156b968b", "newId": "conn-816eb590-ecef-5be3-9258-488e812328d3", "action": "override" }
+      {
+        "existingId": "conn-3e7788a3-69aa-546e-aee0-5e96156b968b",
+        "newId": "conn-816eb590-ecef-5be3-9258-488e812328d3",
+        "action": "override"
+      }
     ]
   }
 }
@@ -200,7 +202,16 @@ The resulting mapping JSON (`useFqn: true`) is written to `output-file` and pass
   "useFqn": true,
   "mapping": {
     "parameters": [
-      { "existingId": "parm-da473fee-a37e-5e9c-ad27-12436271abca", "newId": "parm-e2d8f6c4-4a3b-5f9c-8d5e-7a9b2c3d4e5f", "action": "upsert" }
+      {
+        "existingId": "parm-da473fee-a37e-5e9c-ad27-12436271abca",
+        "newId":      "parm-e2d8f6c4-4a3b-5f9c-8d5e-7a9b2c3d4e5f",
+        "action":     "upsert"
+      },
+      {
+        "existingId": "parm-f473tre-a35e-5y7c-af57-12766273fdlp",
+        "newId":      "parm-a8c4e2b6-7d1f-4e9a-b3c5-2f6d8e0a1b3c",
+        "action":     "upsert"
+      }
     ]
   }
 }
@@ -212,13 +223,25 @@ The resulting mapping JSON (`useFqn: true`) is written to `output-file` and pass
   "useFqn": true,
   "mapping": {
     "connections": [
-      { "existingId": "conn-b1075c0d-17e6-5cf3-b881-f2b9320f080f", "newId": "conn-9e4a2f31-88bd-5c1e-a204-7d6e51b3a9c0", "action": "override" }
+      {
+        "existingId": "conn-b1075c0d-17e6-5cf3-b881-f2b9320f080f",
+        "newId":      "conn-9e4a2f31-88bd-5c1e-a204-7d6e51b3a9c0",
+        "action":     "override"
+      }
     ],
     "parameters": [
-      { "existingId": "parm-da473fee-a37e-5e9c-ad27-12436271abca", "newId": "parm-e2d8f6c4-4a3b-5f9c-8d5e-7a9b2c3d4e5f", "action": "upsert" }
+      {
+        "existingId": "parm-da473fee-a37e-5e9c-ad27-12436271abca",
+        "newId":      "parm-e2d8f6c4-4a3b-5f9c-8d5e-7a9b2c3d4e5f",
+        "action":     "upsert"
+      }
     ],
     "customFields": [
-      { "existingId": "sys_dq_dim", "newId": "sys_dq_dim", "action": "override" }
+      {
+        "existingId": "sys_dq_dim",
+        "newId":      "sys_dq_dim",
+        "action":     "override"
+      }
     ]
   }
 }
