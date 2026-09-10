@@ -42,7 +42,7 @@ jobs:
 
       - name: Export from Source environment
         id: export
-        uses: icedq-tools/export-action@main
+        uses: icedq-tools/export-action@v1
         with:
           icedq-url:     ${{ vars.ICEDQ_URL }}
           keycloak-url:  ${{ vars.ICEDQ_KEYCLOAK_URL }}
@@ -74,7 +74,7 @@ jobs:
 
       - name: Generate mapping for Target environment
         id: mapping
-        uses: icedq-tools/generate-mapping-action@main
+        uses: icedq-tools/generate-mapping-action@v1
         with:
           icedq-url:     ${{ vars.ICEDQ_URL }}
           keycloak-url:  ${{ vars.ICEDQ_KEYCLOAK_URL }}
@@ -108,7 +108,7 @@ jobs:
           path: ./mappings
 
       - name: Import into Target environment
-        uses: icedq-tools/import-action@main
+        uses: icedq-tools/import-action@v1
         with:
           icedq-url:             ${{ vars.ICEDQ_URL }}
           keycloak-url:          ${{ vars.ICEDQ_KEYCLOAK_URL }}
@@ -159,6 +159,99 @@ The action runs `icedq generate-mapping` which performs four steps against the *
 4. Searches the target workspace for custom fields matching by name — unmatched fields are skipped with a warning
 
 The resulting mapping JSON (`useFqn: true`) is written to `output-file` and passed directly to `import-action` via `mapping-file`.
+
+`useFqn` is always written as `true`, since this action is built for the standard promotion-pipeline case, where the target workspace already has same-named counterparts for whatever you're importing (Dev → QA → UAT → Prod). Each resolved entry also gets a fixed action — `override` for connections and custom fields, `upsert` for parameters — the safe defaults for that same case. If you need different behavior (`useFqn: false`, or `append` for a parameter instead of replacing it), edit the generated file before passing it to `import-action`, or author one by hand — see [Mapping file reference](#mapping-file-reference) below for what every field and action actually does.
+
+## Mapping file reference
+
+### Field semantics
+
+| Field | Supported actions | What it does |
+|---|---|---|
+| `useFqn` | `true` / `false` | `true` when an asset (rule/workflow/folder) with the same name already exists in the target — this action always produces `true`. `false` when no same-named asset exists in target yet; only relevant if you're hand-authoring. |
+| `connections` | `override` only | Re-links the imported rule/workflow to use `newId` (target's connection) instead of `existingId` (source's connection). The target connection must already exist by name and connector type — if this action can't find a match, it throws error rather than writing a partial mapping file (see [How it works](#how-it-works)). |
+| `parameters` | `append`, `override`, `upsert` | `append` adds new keys to the target parameter without touching existing ones. `override` replaces the values of keys with matching names. `upsert` replaces matching keys and adds any new ones — this action always writes `upsert`. |
+| `customFields` | `override` only | Overrides the field's value in the target. The target field must already exist by name — unmatched fields are silently skipped by this action rather than failing the whole run. |
+
+### Examples
+
+**Nothing to map** — e.g. a Groovy script rule with no connections, parameters, or custom fields to re-link. The `mapping` object is omitted entirely; only `useFqn` is required.
+```json
+{ "useFqn": true }
+```
+
+**Connection only**
+```json
+{
+  "useFqn": true,
+  "mapping": {
+    "connections": [
+      {
+        "existingId": "conn-3e7788a3-69aa-546e-aee0-5e96156b968b",
+        "newId": "conn-816eb590-ecef-5be3-9258-488e812328d3",
+        "action": "override"
+      }
+    ]
+  }
+}
+```
+
+**Parameters only** — every entry needs both `existingId` (source) and `newId` (target); this action always writes `upsert`.
+```json
+{
+  "useFqn": true,
+  "mapping": {
+    "parameters": [
+      {
+        "existingId": "parm-da473fee-a37e-5e9c-ad27-12436271abca",
+        "newId":      "parm-e2d8f6c4-4a3b-5f9c-8d5e-7a9b2c3d4e5f",
+        "action":     "upsert"
+      },
+      {
+        "existingId": "parm-f473tre-a35e-5y7c-af57-12766273fdlp",
+        "newId":      "parm-a8c4e2b6-7d1f-4e9a-b3c5-2f6d8e0a1b3c",
+        "action":     "upsert"
+      }
+    ]
+  }
+}
+```
+
+**Full mapping** — connections, parameters, and custom fields together. Custom fields are matched and written by *name*, not UUID.
+```json
+{
+  "useFqn": true,
+  "mapping": {
+    "connections": [
+      {
+        "existingId": "conn-b1075c0d-17e6-5cf3-b881-f2b9320f080f",
+        "newId":      "conn-9e4a2f31-88bd-5c1e-a204-7d6e51b3a9c0",
+        "action":     "override"
+      }
+    ],
+    "parameters": [
+      {
+        "existingId": "parm-da473fee-a37e-5e9c-ad27-12436271abca",
+        "newId":      "parm-e2d8f6c4-4a3b-5f9c-8d5e-7a9b2c3d4e5f",
+        "action":     "upsert"
+      }
+    ],
+    "customFields": [
+      {
+        "existingId": "sys_dq_dim",
+        "newId":      "sys_dq_dim",
+        "action":     "override"
+      }
+    ]
+  }
+}
+```
+
+> `append`/`override` for parameters and `useFqn: false` only come into play if you're hand-authoring or hand-editing a mapping file — this action itself always produces the `useFqn: true`, `upsert`-for-parameters shape shown in the examples above.
+
+### Tip: keep mapping files under version control
+
+Whether generated by this action or hand-authored, commit mapping files to your repo (e.g. `mappings/qa.json`, `mappings/uat.json`, `mappings/prod.json`) so changes to UUID mappings are auditable and reviewable in pull requests, the same way you'd track any other config.
 
 ## Artifacts
 
