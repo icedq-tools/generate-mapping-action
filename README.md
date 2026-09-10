@@ -42,7 +42,7 @@ jobs:
 
       - name: Export from Source environment
         id: export
-        uses: icedq-tools/export-action@main
+        uses: icedq-tools/export-action@v1
         with:
           icedq-url:     ${{ vars.ICEDQ_URL }}
           keycloak-url:  ${{ vars.ICEDQ_KEYCLOAK_URL }}
@@ -74,7 +74,7 @@ jobs:
 
       - name: Generate mapping for Target environment
         id: mapping
-        uses: icedq-tools/generate-mapping-action@main
+        uses: icedq-tools/generate-mapping-action@v1
         with:
           icedq-url:     ${{ vars.ICEDQ_URL }}
           keycloak-url:  ${{ vars.ICEDQ_KEYCLOAK_URL }}
@@ -108,7 +108,7 @@ jobs:
           path: ./mappings
 
       - name: Import into Target environment
-        uses: icedq-tools/import-action@main
+        uses: icedq-tools/import-action@v1
         with:
           icedq-url:             ${{ vars.ICEDQ_URL }}
           keycloak-url:          ${{ vars.ICEDQ_KEYCLOAK_URL }}
