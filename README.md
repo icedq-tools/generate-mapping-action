@@ -13,15 +13,15 @@ Pairs with [`icedq-tools/export-action`](https://github.com/marketplace/actions/
 
 - uses: icedq-tools/generate-mapping-action@v1
   with:
-    icedq-url:     ${{ vars.ICEDQ_URL }}
-    keycloak-url:  ${{ vars.ICEDQ_KEYCLOAK_URL }}
-    client-id:     ${{ secrets.ICEDQ_CLIENT_ID }}
-    client-secret: ${{ secrets.ICEDQ_CLIENT_SECRET }}
-    org-id:        ${{ vars.ICEDQ_ORG_ID }}
-    account-id:    ${{ vars.ICEDQ_ACCOUNT_ID }}
-    workspace-id:  ${{ vars.ICEDQ_WORKSPACE_ID }}
-    bundle:        ./bundle.zip
-    output-file:   ./icedq-mapping.json
+    icedq-base-url: ${{ vars.ICEDQ_BASE_URL }}
+    keycloak-url:   ${{ vars.ICEDQ_KEYCLOAK_URL }}
+    client-id:      ${{ secrets.ICEDQ_CLIENT_ID }}
+    client-secret:  ${{ secrets.ICEDQ_CLIENT_SECRET }}
+    org-id:         ${{ vars.ICEDQ_ORG_ID }}
+    account-id:     ${{ vars.ICEDQ_ACCOUNT_ID }}
+    workspace-id:   ${{ vars.ICEDQ_WORKSPACE_ID }}
+    bundle:         ./bundle.zip
+    output-file:    ./icedq-mapping.json
 ```
 
 ### Full pipeline — export → generate-mapping → import
@@ -44,17 +44,17 @@ jobs:
         id: export
         uses: icedq-tools/export-action@v1
         with:
-          icedq-url:     ${{ vars.ICEDQ_URL }}
-          keycloak-url:  ${{ vars.ICEDQ_KEYCLOAK_URL }}
-          client-id:     ${{ secrets.ICEDQ_CLIENT_ID }}
-          client-secret: ${{ secrets.ICEDQ_CLIENT_SECRET }}
-          org-id:        ${{ vars.ICEDQ_ORG_ID }}
-          account-id:    ${{ vars.ICEDQ_ACCOUNT_ID }}
-          workspace-id:  ${{ vars.ICEDQ_WORKSPACE_ID }}
-          resource:      rule
-          id:            ${{ vars.RULE_ID }}
-          output-file:   ./exports/bundle.zip
-          artifact-name: icedq-bundle
+          icedq-base-url: ${{ vars.ICEDQ_BASE_URL }}
+          keycloak-url:   ${{ vars.ICEDQ_KEYCLOAK_URL }}
+          client-id:      ${{ secrets.ICEDQ_CLIENT_ID }}
+          client-secret:  ${{ secrets.ICEDQ_CLIENT_SECRET }}
+          org-id:         ${{ vars.ICEDQ_ORG_ID }}
+          account-id:     ${{ vars.ICEDQ_ACCOUNT_ID }}
+          workspace-id:   ${{ vars.ICEDQ_WORKSPACE_ID }}
+          resource:       rule
+          id:             ${{ vars.RULE_ID }}
+          output-file:    ./exports/bundle.zip
+          artifact-name:  icedq-bundle
 
   generate-mapping:
     runs-on: ubuntu-latest
@@ -75,16 +75,16 @@ jobs:
         id: mapping
         uses: icedq-tools/generate-mapping-action@v1
         with:
-          icedq-url:     ${{ vars.ICEDQ_URL }}
-          keycloak-url:  ${{ vars.ICEDQ_KEYCLOAK_URL }}
-          client-id:     ${{ secrets.ICEDQ_CLIENT_ID }}
-          client-secret: ${{ secrets.ICEDQ_CLIENT_SECRET }}
-          org-id:        ${{ vars.ICEDQ_ORG_ID }}
-          account-id:    ${{ vars.ICEDQ_ACCOUNT_ID }}
-          workspace-id:  ${{ vars.ICEDQ_WORKSPACE_ID }}
-          bundle:        ./exports/bundle.zip
-          output-file:   ./mappings/icedq-mapping.json
-          artifact-name: icedq-mapping
+          icedq-base-url: ${{ vars.ICEDQ_BASE_URL }}
+          keycloak-url:   ${{ vars.ICEDQ_KEYCLOAK_URL }}
+          client-id:      ${{ secrets.ICEDQ_CLIENT_ID }}
+          client-secret:  ${{ secrets.ICEDQ_CLIENT_SECRET }}
+          org-id:         ${{ vars.ICEDQ_ORG_ID }}
+          account-id:     ${{ vars.ICEDQ_ACCOUNT_ID }}
+          workspace-id:   ${{ vars.ICEDQ_WORKSPACE_ID }}
+          bundle:         ./exports/bundle.zip
+          output-file:    ./mappings/icedq-mapping.json
+          artifact-name:  icedq-mapping
 
   import:
     runs-on: ubuntu-latest
@@ -108,7 +108,7 @@ jobs:
       - name: Import into Target environment
         uses: icedq-tools/import-action@v1
         with:
-          icedq-url:             ${{ vars.ICEDQ_URL }}
+          icedq-base-url:        ${{ vars.ICEDQ_BASE_URL }}
           keycloak-url:          ${{ vars.ICEDQ_KEYCLOAK_URL }}
           client-id:             ${{ secrets.ICEDQ_CLIENT_ID }}
           client-secret:         ${{ secrets.ICEDQ_CLIENT_SECRET }}
@@ -126,7 +126,7 @@ jobs:
 
 | Input | Required | Default | Description |
 |---|---|---|---|
-| `icedq-url` | yes | — | iceDQ instance base URL |
+| `icedq-base-url` | yes | — | iceDQ instance base URL |
 | `keycloak-url` | yes | — | Keycloak token endpoint base |
 | `client-id` | yes | — | OAuth client ID |
 | `client-secret` | yes | — | OAuth client secret |
