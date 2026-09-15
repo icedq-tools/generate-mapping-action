@@ -6,7 +6,7 @@ branding:
   color: 'blue'
 
 inputs:
-  icedq-url:
+  icedq-base-url:
     description: 'iceDQ instance base URL'
     required: true
   keycloak-url:
@@ -72,7 +72,7 @@ runs:
       id: run-generate-mapping
       shell: bash
       env:
-        ICEDQ_URL: ${{ inputs.icedq-url }}
+        ICEDQ_BASE_URL: ${{ inputs.icedq-base-url }}
         ICEDQ_KEYCLOAK_URL: ${{ inputs.keycloak-url }}
         ICEDQ_CLIENT_ID: ${{ inputs.client-id }}
         ICEDQ_CLIENT_SECRET: ${{ inputs.client-secret }}
