@@ -134,6 +134,8 @@ jobs:
 | `account-id` | yes | — | Account ID |
 | `workspace-id` | yes | — | **Target** workspace ID (connections and parameters are resolved against this workspace) |
 | `bundle` | yes | — | Path to the export ZIP (output of `export-action`) |
+| `cross-env-names-file` | no | — | JSON config of per-environment names, for cross-environment name matching (see [Cross-environment name overrides](#cross-environment-name-overrides)) |
+| `target-env` | no | — | Environment label to look up in `cross-env-names-file` (required if that input is set) |
 | `output-file` | no | `icedq-mapping.json` | Path to write the generated mapping JSON |
 | `cli-version` | no | `latest` | Pin a specific `@icedq/cli` version |
 | `verify-ssl` | no | `true` | Verify TLS |
@@ -152,12 +154,53 @@ The action runs `icedq generate-mapping` which performs four steps against the *
 
 1. Uploads the bundle to determine which connections, parameters, and custom fields need to be mapped
 2. Searches the target workspace for connections matching by name (case-insensitive, per connector type) — fails if a connection is not found
-3. Searches the target workspace for parameters matching by name — entries without a match are included without a `newId` so the import can upsert them
+3. Searches the target workspace for parameters matching by name — unmatched parameters are skipped with a warning (import then creates a fresh parameter in target with the source's values)
 4. Searches the target workspace for custom fields matching by name — unmatched fields are skipped with a warning
+
+Name matching works by exact name by default — see [Cross-environment name overrides](#cross-environment-name-overrides) below if your connections/parameters are named differently per environment.
 
 The resulting mapping JSON (`useFqn: true`) is written to `output-file` and passed directly to `import-action` via `mapping-file`.
 
 `useFqn` is always written as `true`, since this action is built for the standard promotion-pipeline case, where the target workspace already has same-named counterparts for whatever you're importing (Dev → QA → UAT → Prod). Each resolved entry also gets a fixed action — `override` for connections and custom fields, `upsert` for parameters — the safe defaults for that same case. If you need different behavior (`useFqn: false`, or `append` for a parameter instead of replacing it), edit the generated file before passing it to `import-action`, or author one by hand — see [Mapping file reference](#mapping-file-reference) below for what every field and action actually does.
+
+## Cross-environment name overrides
+
+By default, connections and parameters are matched against the target workspace by their exact source name. If your organization suffixes names per environment instead of keeping them identical — e.g. `finance_db` in DEV, `finance_db_uat` in UAT, `finance_db-PROD` in PROD — exact matching won't find the target counterpart. Use `cross-env-names-file` and `target-env` to match across that difference:
+
+```yaml
+- uses: icedq-tools/generate-mapping-action@v1
+  with:
+    # ...auth inputs...
+    bundle:               ./exports/bundle.zip
+    output-file:          ./mappings/icedq-mapping.json
+    cross-env-names-file: ./resource-names-config.json
+    target-env:           UAT
+```
+
+`resource-names-config.json` lists every environment's actual name for each connection/parameter. The top-level key (`finance_db` below) is just a label you choose — it doesn't need to match any real name:
+
+```json
+{
+  "connections": {
+    "finance_db": {
+      "DEV": "finance_db_dev",
+      "UAT": "finance_db_uat",
+      "PROD": "finance_db-PROD"
+    }
+  },
+  "parameters": {
+    "parameters_set_1": {
+      "DEV": "parameters_set_1_dev",
+      "UAT": "parameters_set_1_uat",
+      "PROD": "parameters_set_1-PROD"
+    }
+  }
+}
+```
+
+The same file works for any pipeline direction — DEV→UAT, UAT→PROD, or anything else — since the action looks up whichever entry lists the bundle's actual source name (under any environment), then reads that same entry's name for `target-env`. Both the name lookup and the `target-env` label match are case-insensitive.
+
+If a connection/parameter isn't listed in the file, or its override name still isn't found in the target workspace, it falls back to today's default behavior (match by the plain source name; fail for an unmatched connection, skip-with-warning for an unmatched parameter).
 
 ## Mapping file reference
 

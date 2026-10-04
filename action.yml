@@ -30,6 +30,12 @@ inputs:
   bundle:
     description: 'Path to the export bundle ZIP (output of iceDQ Export action)'
     required: true
+  cross-env-names-file:
+    description: 'Path to a JSON config mapping each connection/parameter to its name in each environment, for cross-environment name matching'
+    required: false
+  target-env:
+    description: 'Environment label to look up in cross-env-names-file (required if that input is set)'
+    required: false
   output-file:
     description: 'Path to write the generated mapping JSON'
     required: false
@@ -81,6 +87,8 @@ runs:
         ICEDQ_WORKSPACE_ID: ${{ inputs.workspace-id }}
         ICEDQ_VERIFY_SSL: ${{ inputs.verify-ssl }}
         BUNDLE: ${{ inputs.bundle }}
+        CROSS_ENV_NAMES_FILE: ${{ inputs.cross-env-names-file }}
+        TARGET_ENV: ${{ inputs.target-env }}
         OUTPUT_FILE: ${{ inputs.output-file }}
       run: bash "${{ github.action_path }}/scripts/run-generate-mapping.sh"
 

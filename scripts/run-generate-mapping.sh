@@ -8,6 +8,13 @@ ARGS=(
   "--output-format" "json"
 )
 
+if [[ -n "${CROSS_ENV_NAMES_FILE:-}" ]]; then
+  ARGS+=("--cross-env-names-file" "${CROSS_ENV_NAMES_FILE}")
+fi
+if [[ -n "${TARGET_ENV:-}" ]]; then
+  ARGS+=("--target-env" "${TARGET_ENV}")
+fi
+
 # Ensure parent directory for the output file exists.
 mkdir -p "$(dirname "${OUTPUT_FILE}")"
 
