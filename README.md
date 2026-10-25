@@ -134,7 +134,7 @@ jobs:
 | `account-id` | yes | — | Account ID |
 | `workspace-id` | yes | — | **Target** workspace ID (connections and parameters are resolved against this workspace) |
 | `bundle` | yes | — | Path to the export ZIP (output of `export-action`) |
-| `cross-env-names-file` | no | — | JSON config of per-environment names, for cross-environment name matching (see [Cross-environment name overrides](#cross-environment-name-overrides)) |
+| `cross-env-names-file` | no | — | `.json` or `.csv` config of per-environment names, for cross-environment name matching (see [Cross-environment name overrides](#cross-environment-name-overrides)) |
 | `target-env` | no | — | Environment label to look up in `cross-env-names-file` (required if that input is set) |
 | `output-file` | no | `icedq-mapping.json` | Path to write the generated mapping JSON |
 | `cli-version` | no | `latest` | Pin a specific `@icedq/cli` version |
@@ -165,7 +165,7 @@ The resulting mapping JSON (`useFqn: true`) is written to `output-file` and pass
 
 ## Cross-environment name overrides
 
-By default, connections and parameters are matched against the target workspace by their exact source name. If your organization suffixes names per environment instead of keeping them identical — e.g. `finance_db` in DEV, `finance_db_uat` in UAT, `finance_db-PROD` in PROD — exact matching won't find the target counterpart. Use `cross-env-names-file` and `target-env` to match across that difference:
+By default, connections and parameters are matched against the target workspace by their exact source name. If your organization suffixes names per environment instead of keeping them identical — e.g. `finance_db` in DEV, `finance_db_uat` in UAT, `finance_db-PROD` in PROD — exact matching won't find the target counterpart. Use `cross-env-names-file` and `target-env` to match across that difference. Both a `.json` and a `.csv` file are accepted — pick whichever format suits who's maintaining it.
 
 ```yaml
 - uses: icedq-tools/generate-mapping-action@v1
@@ -173,34 +173,69 @@ By default, connections and parameters are matched against the target workspace 
     # ...auth inputs...
     bundle:               ./exports/bundle.zip
     output-file:          ./mappings/icedq-mapping.json
-    cross-env-names-file: ./resource-names-config.json
+    cross-env-names-file: ./resource-names-config.csv   # or .json
     target-env:           UAT
-```
-
-`resource-names-config.json` lists every environment's actual name for each connection/parameter. The top-level key (`finance_db` below) is just a label you choose — it doesn't need to match any real name:
-
-```json
-{
-  "connections": {
-    "finance_db": {
-      "DEV": "finance_db_dev",
-      "UAT": "finance_db_uat",
-      "PROD": "finance_db-PROD"
-    }
-  },
-  "parameters": {
-    "parameters_set_1": {
-      "DEV": "parameters_set_1_dev",
-      "UAT": "parameters_set_1_uat",
-      "PROD": "parameters_set_1-PROD"
-    }
-  }
-}
 ```
 
 The same file works for any pipeline direction — DEV→UAT, UAT→PROD, or anything else — since the action looks up whichever entry lists the bundle's actual source name (under any environment), then reads that same entry's name for `target-env`. Both the name lookup and the `target-env` label match are case-insensitive.
 
 If a connection/parameter isn't listed in the file, or its override name still isn't found in the target workspace, it falls back to today's default behavior (match by the plain source name; fail for an unmatched connection, skip-with-warning for an unmatched parameter).
+
+### CSV format
+
+A plain spreadsheet table — one row per connection/parameter per environment, so it's editable in Excel or Google Sheets without needing to know JSON:
+
+| type | label | environment | actual_name |
+|---|---|---|---|
+| connection | etl-1-sqlserver | UAT | sqlserver-uat |
+| connection | etl-1-sqlserver | QA | sqlserver-qa |
+| connection | etl-1-sqlserver | PROD | sqlserver-prod |
+| connection | etl-2-sqlserver | PROD | sqlserver-prod-2 |
+| parameter | etl-parameters | UAT | parameters_set_1-uat |
+| parameter | etl-parameters | PROD | parameters_set_1-prod |
+
+As a `.csv` file:
+
+```csv
+type,label,environment,actual_name
+connection,etl-1-sqlserver,UAT,sqlserver-uat
+connection,etl-1-sqlserver,QA,sqlserver-qa
+connection,etl-1-sqlserver,PROD,sqlserver-prod
+connection,etl-2-sqlserver,PROD,sqlserver-prod-2
+parameter,etl-parameters,UAT,parameters_set_1-uat
+parameter,etl-parameters,PROD,parameters_set_1-prod
+```
+
+- `type` — `connection` or `parameter`.
+- `label` — your own name for this resource, same idea as the JSON format's top-level key below. It doesn't need to match any real name, and each label can list as many or as few environments as it actually has (notice `etl-2-sqlserver` only has a `PROD` row — that's fine).
+- `environment` and `actual_name` — the name this resource actually has in that environment. This is what `target-env` gets matched against.
+
+Column order doesn't matter and column names are case-insensitive, so this is forgiving of however someone naturally lays it out in a spreadsheet. `.xlsx` isn't supported — save or export as `.csv` instead (Excel does this natively via File → Save As).
+
+### JSON format
+
+The same information, nested instead of flat — useful if you're generating or editing the file programmatically:
+
+```json
+{
+  "connections": {
+    "etl-1-sqlserver": {
+      "UAT": "sqlserver-uat",
+      "QA": "sqlserver-qa",
+      "PROD": "sqlserver-prod"
+    },
+    "etl-2-sqlserver": {
+      "PROD": "sqlserver-prod-2"
+    }
+  },
+  "parameters": {
+    "etl-parameters": {
+      "UAT": "parameters_set_1-uat",
+      "PROD": "parameters_set_1-prod"
+    }
+  }
+}
+```
 
 ## Mapping file reference
 
